@@ -1,0 +1,310 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Convite Lacrado</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500&display=swap">
+<style>
+/* Layout: o envelope (imagem do usuário) fica num palco verde-escuro. Ao tocar no selo, o selo racha,
+   a aba abre, o convite sobe e voa para o centro, e a página inteira vira o papel do convite. */
+:root {
+  --bg: #1f2819;
+  --bg-hi: #3a4730;
+  --liner: #5d6947;
+  --liner-lo: #44503a;
+  --sheet: #f6f4f0;
+  --ink: #38402b;
+  --sans: 'Jost', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --cw: min(calc(100vw - 32px), calc((100dvh - 40px) * 1136 / 1600), 760px);
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background-color: var(--bg);
+  background-image: radial-gradient(ellipse 75% 60% at 50% 45%, var(--bg-hi), transparent 80%);
+  color: var(--sheet);
+  font-family: var(--sans);
+}
+#app { height: 100%; }
+img { -webkit-user-drag: none; user-select: none; }
+
+.stage { position: relative; isolation: isolate; height: 100%; display: grid; place-items: center; }
+
+/* Papel que cobre o palco no final (mesma cor das bordas do convite) */
+.takeover { position: fixed; inset: 0; z-index: 0; opacity: 0; pointer-events: none; background: var(--sheet); }
+
+/* Envelope: proporção da imagem (1136 x 1600) */
+.env {
+  position: relative; z-index: 1;
+  width: min(88vw, calc(56dvh * 1136 / 1600), 520px);
+  aspect-ratio: 1136 / 1600;
+  cursor: pointer;
+}
+.liner {
+  position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(180deg, var(--liner), var(--liner-lo));
+  box-shadow: 0 44px 70px -24px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 255, 255, .05);
+}
+.pocket { position: absolute; inset: 0; z-index: 4; width: 100%; height: 100%; display: block; pointer-events: none; }
+
+.flap-wrap { position: absolute; inset: 0; z-index: 5; perspective: 1400px; perspective-origin: 50% 0; pointer-events: none; }
+.flap { position: absolute; left: 0; top: 0; width: 100%; height: 59.9375%; transform-origin: 50% 0; transform-style: preserve-3d; }
+.face { position: absolute; inset: 0; clip-path: polygon(2.1127% 0, 98.1514% 0, 50% 100%); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.face.out { background: url('assets/envelope.jpg') 0 0 / 100% auto no-repeat; }
+.face.in { transform: rotateY(180deg); background: linear-gradient(180deg, var(--liner-lo), var(--liner) 70%, #6f7b57); }
+
+/* Selo (recortado da imagem) */
+.seal {
+  position: absolute; z-index: 6;
+  left: 38.1162%; top: 44.375%; width: 23.9437%; height: 16.875%;
+  padding: 0; border: 0; background: none; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.seal:focus-visible { outline: 2px solid var(--sheet); outline-offset: 6px; border-radius: 50%; }
+.halves { position: absolute; inset: 0; filter: drop-shadow(0 6px 7px rgba(52, 46, 28, .38)); animation: breathe 2.8s ease-in-out infinite; }
+.halves img { display: block; width: 100%; height: 100%; }
+.ring {
+  position: absolute; z-index: 6; pointer-events: none;
+  left: 58.7148%; top: 46.6875%; width: 7.2183%; height: 12.3125%;
+  animation: glow 2.8s ease-in-out infinite;
+}
+@keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+@keyframes glow { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+
+/* Convite (imagem do usuário) */
+.card {
+  position: absolute; left: 0; top: 0; z-index: 3;
+  width: var(--cw); aspect-ratio: 1136 / 1600;
+  transform-origin: 0 0;
+  background: var(--sheet);
+  box-shadow: 0 26px 50px -16px rgba(0, 0, 0, .55);
+}
+.card > img { display: block; width: 100%; height: 100%; }
+/* Esmaece as bordas para a imagem se fundir com o papel da página */
+.card .fade {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background:
+    linear-gradient(90deg, var(--sheet) 0, transparent 6%, transparent 94%, var(--sheet) 100%),
+    linear-gradient(180deg, var(--sheet) 0, transparent 4%, transparent 96%, var(--sheet) 100%);
+}
+.card .link { position: absolute; inset: 0; display: block; pointer-events: none; }
+.card.final .link { pointer-events: auto; cursor: pointer; }
+.card .link:focus-visible { outline: 2px solid var(--ink); outline-offset: -4px; }
+.card.final {
+  position: fixed; left: 50%; top: 50%; z-index: 30;
+  transform: translate(-50%, -50%);
+  box-shadow: none;
+}
+.card.final .fade { opacity: 1; }
+
+.close {
+  position: fixed; z-index: 40;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  right: max(16px, env(safe-area-inset-right, 0px));
+  padding: .8em 1.2em; border-radius: 99px; cursor: pointer;
+  font: 500 12px var(--sans); letter-spacing: .2em; text-transform: uppercase;
+  color: var(--ink); background: rgba(246, 244, 240, .85); border: 1px solid rgba(56, 64, 43, .3);
+}
+.close:hover { background: #fff; }
+.close:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .halves, .ring { animation: none !important; }
+}
+</style>
+
+<div id="app"></div>
+<button class="close" id="close" type="button" hidden>Fechar convite</button>
+
+<script>
+(() => {
+  const ASSETS = { env: 'assets/envelope.jpg', seal: 'assets/seal.png', ring: 'assets/ring.png', card: 'assets/convite.jpg' };
+  const IMG = { W: 1136, H: 1600 };
+  const TRI = { ax: 24, bx: 568, by: 959, cx: 1115 };   /* aba em V: canto esquerdo, ponta, canto direito (px da imagem) */
+  const CARD_FRAC = 0.62;                                 /* largura do convite dentro do envelope */
+  const ALT = 'Convite de casamento de Victória e Bruno, 12 de dezembro de 2026, às 15h30, Alameda dos Jequitibás, 750, Espaço Delícia';
+  const RSVP_URL = 'https://noivos.casar.com/VICTORIA-E-BRUNO-2026-12-12#/pagina/home';
+
+  const app = document.getElementById('app');
+  const closeBtn = document.getElementById('close');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const d = (ms) => (reduce ? 1 : ms);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const $ = (s, r = document) => r.querySelector(s);
+  const tf = (x, y, s) => `translate(${x}px,${y}px) scale(${s})`;
+  const pct = (v, t) => (v / t * 100).toFixed(4) + '%';
+  let state = 'closed';
+
+  /* Recorte do bolso: a imagem inteira menos a aba (1,8px para dentro, para não aparecer fresta) */
+  function pocketPoly(delta) {
+    const { ax, bx, by, cx } = TRI, W = IMG.W, H = IMG.H;
+    const sL = (bx - ax) / by, sR = (cx - bx) / by;
+    const shL = delta * Math.sqrt(1 + sL * sL), shR = delta * Math.sqrt(1 + sR * sR);
+    const y = ((cx - shR) - (ax + shL)) / (sL + sR);
+    const tipx = ax + shL + sL * y;
+    const pts = [[0, 0], [ax + shL, 0], [tipx, y], [cx - shR, 0], [W, 0], [W, H], [0, H]];
+    return 'polygon(' + pts.map((p) => pct(p[0], W) + ' ' + pct(p[1], H)).join(',') + ')';
+  }
+
+  const cardHTML = () => `
+    <div class="card" id="card">
+      <img src="${ASSETS.card}" alt="${ALT}" draggable="false">
+      <span class="fade"></span>
+      <a class="link" href="${RSVP_URL}" target="_blank" rel="noopener" aria-label="Abrir o site dos noivos: confirmação de presença e lista de presentes"></a>
+    </div>`;
+
+  function geo() {
+    const env = $('#env'), card = $('#card');
+    const EW = env.offsetWidth, EH = env.offsetHeight;
+    const CW = card.offsetWidth, CH = card.offsetHeight;
+    const w0 = CARD_FRAC * EW, s0 = w0 / CW, h0 = CH * s0;
+    const x0 = (EW - w0) / 2, y0 = EH * 0.12;
+    /* altura mais alta em que a base do convite ainda cabe inteira na abertura em V */
+    const k = EH / IMG.H, vTop = TRI.cx - TRI.ax;
+    const yClear = k * TRI.by * (1 - ((w0 + EW * 0.03) * IMG.W) / (EW * vTop));
+    const yb = Math.max(EH * 0.04, yClear);
+    return { EW, EH, CW, CH, s0, w0, h0, x0, y0, y1: yb - h0 };
+  }
+  function place() {
+    const g = geo();
+    $('#card').style.transform = tf(g.x0, g.y0, g.s0);
+  }
+
+  function mount(animateIn) {
+    app.innerHTML = `
+      <div class="stage">
+        <div class="takeover" id="takeover"></div>
+        <div class="env" id="env">
+          <div class="liner"></div>
+          <img class="pocket" id="pocket" src="${ASSETS.env}" alt="" draggable="false">
+          <div class="flap-wrap"><div class="flap"><div class="face out"></div><div class="face in"></div></div></div>
+          ${cardHTML()}
+          <img class="ring" src="${ASSETS.ring}" alt="" draggable="false">
+          <button class="seal" type="button" aria-label="Abrir convite">
+            <span class="halves"><img src="${ASSETS.seal}" alt="" draggable="false"></span>
+          </button>
+        </div>
+      </div>`;
+    state = 'closed';
+    $('#pocket').style.clipPath = pocketPoly(1.8);
+    place();
+    $('#env').addEventListener('click', open);
+    if (animateIn && !reduce) {
+      $('#env').animate(
+        [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }],
+        { duration: 600, easing: 'ease-out' }
+      );
+    }
+  }
+
+  async function open() {
+    if (state !== 'closed') return;
+    state = 'opening';
+
+    const env = $('#env'), card = $('#card'), takeover = $('#takeover');
+    const flapWrap = $('.flap-wrap'), flap = $('.flap');
+    const seal = $('.seal'), halves = $('.halves'), ring = $('.ring');
+    const g = geo();
+    const r = env.getBoundingClientRect();
+    const topRel = Math.min(g.y1, -0.46 * g.EH);               /* ponto mais alto: convite ou ponta da aba aberta */
+    const shift = Math.max(0, 14 - (r.top + topRel));
+    const xf = (window.innerWidth - g.CW) / 2 - r.left;
+    const yf = (window.innerHeight - g.CH) / 2 - (r.top + shift);
+    const parts = [...env.children].filter((el) => el !== card);
+
+    seal.disabled = true;
+    ring.animate([{ opacity: 1 }, { opacity: 0 }], { duration: d(350), fill: 'forwards' });
+
+    /* 1. O selo cede um pouco ao toque e continua inteiro */
+    halves.style.animation = 'none';
+    halves.animate(
+      [{ transform: 'scale(1)' }, { transform: 'scale(.94)' }, { transform: 'scale(1)' }],
+      { duration: d(380), easing: 'ease-in-out' }
+    );
+    await sleep(d(300));
+
+    /* 2. A aba abre */
+    await flap.animate(
+      [{ transform: 'rotateX(0deg)' }, { transform: 'rotateX(90deg)' }],
+      { duration: d(380), easing: 'cubic-bezier(.45,0,.9,.7)', fill: 'forwards' }
+    ).finished;
+    flapWrap.style.zIndex = '2';
+    flap.animate(
+      [{ transform: 'rotateX(90deg)' }, { transform: 'rotateX(215deg)' }],
+      { duration: d(650), easing: 'cubic-bezier(.15,.7,.3,1)', fill: 'forwards' }
+    );
+    await sleep(d(330));
+
+    /* 3. O convite sobe para fora do envelope */
+    const riseOpts = { duration: d(1100), easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' };
+    const rise = card.animate([{ transform: tf(g.x0, g.y0, g.s0) }, { transform: tf(g.x0, g.y1, g.s0) }], riseOpts);
+    if (shift > 0) env.animate([{ transform: 'translateY(0)' }, { transform: `translateY(${shift}px)` }], riseOpts);
+    await rise.finished;
+    card.style.zIndex = '7';
+    await sleep(d(120));
+
+    /* 4. O convite voa para o centro e a página vira o papel do convite */
+    const fly = card.animate(
+      [{ transform: tf(g.x0, g.y1, g.s0) }, { transform: tf(xf, yf, 1) }],
+      { duration: d(1200), easing: 'cubic-bezier(.6,0,.15,1)', fill: 'forwards' }
+    );
+    card.animate(
+      [{ boxShadow: '0 26px 50px -16px rgba(0,0,0,.55)' }, { boxShadow: '0 0 0 0 rgba(0,0,0,0)' }],
+      { duration: d(1200), delay: d(300), fill: 'forwards' }
+    );
+    parts.forEach((el) => el.animate(
+      [{ transform: 'translateY(0)', opacity: 1 }, { transform: `translateY(${g.EH * 0.35}px)`, opacity: 0 }],
+      { duration: d(900), delay: d(150), easing: 'ease-in', fill: 'forwards' }
+    ));
+    await sleep(d(650));
+    const paper = takeover.animate([{ opacity: 0 }, { opacity: 1 }], { duration: d(700), fill: 'forwards' });
+    $('.fade', card).animate([{ opacity: 0 }, { opacity: 1 }], { duration: d(700), fill: 'forwards' });
+    await Promise.all([fly.finished, paper.finished]);
+
+    /* 5. Fixa o convite no centro da página */
+    document.body.appendChild(card);
+    card.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+    card.removeAttribute('style');
+    card.classList.add('final');
+    env.style.visibility = 'hidden';
+    state = 'open';
+
+    closeBtn.hidden = false;
+    closeBtn.animate([{ opacity: 0 }, { opacity: 1 }], { duration: d(500), fill: 'forwards' });
+    closeBtn.focus({ preventScroll: true });
+  }
+
+  async function closeInvite() {
+    if (state !== 'open') return;
+    state = 'closing';
+    closeBtn.hidden = true;
+    const card = $('#card'), takeover = $('#takeover');
+    const a = card.animate(
+      [
+        { opacity: 1, transform: 'translate(-50%,-50%) scale(1)' },
+        { opacity: 0, transform: 'translate(-50%,-46%) scale(.96)' }
+      ],
+      { duration: d(450), easing: 'ease-in', fill: 'forwards' }
+    );
+    takeover.animate([{ opacity: 1 }, { opacity: 0 }], { duration: d(550), fill: 'forwards' });
+    await a.finished;
+    await sleep(d(120));
+    card.remove();
+    mount(true);
+  }
+
+  closeBtn.addEventListener('click', closeInvite);
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeInvite(); });
+  window.addEventListener('resize', () => { if (state === 'closed') place(); });
+
+  /* Carrega as imagens antes de mostrar o envelope, para não aparecer a aba pela metade */
+  const preload = (src) => new Promise((res) => { const i = new Image(); i.onload = i.onerror = () => res(); i.src = src; });
+  Promise.race([Promise.all(Object.values(ASSETS).map(preload)), sleep(5000)]).then(() => mount(false));
+})();
+</script>
+
+</body></html>
